@@ -31,6 +31,8 @@ IN_NUMBER = ['1', '2', '3', '4', '5', '6', '7', '8']
 # 手数の上限
 MAX_TURNS = 60
 
+#mannzi
+
 #Q値：辞書管理(str型環境 : 行動の集合)
 class QLearningAgent:
     """
