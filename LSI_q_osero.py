@@ -31,8 +31,6 @@ IN_NUMBER = ['1', '2', '3', '4', '5', '6', '7', '8']
 # 手数の上限
 MAX_TURNS = 60
 
-#mannzi
-
 #Q値：辞書管理(str型環境 : 行動の集合)
 class QLearningAgent:
     """
@@ -116,6 +114,13 @@ class QLearningAgent:
         self.q_values[self.previous_state][self.previous_action] = q + \
             (self.alpha * (reward + (self.gamma * max_q) - q))
 
+'''
+この場合だと、{報酬が与えられる状態まで進み、
+与えられた報酬を基に今まで行ってきた『状態と行動のセット』を評価する}
+の「今まで行ってきた『状態と行動のセット』を評価する」が未完成で、
+勝敗がついて報酬が与えられた時の直前の『状態と行動のセット』しか評価されてないと思うのでだめと思う
+今まで行ってきた『状態と行動のセット』も評価する必要
+'''
 if __name__ == '__main__':
     board = Board()  # オセロ環境
     ini_state = board.RawBoard  # 初期状態：
