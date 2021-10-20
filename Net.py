@@ -161,7 +161,7 @@ class net():
     #     plt.plot(X_test,Y_test)
     #     plt.show()
 
-# class Board() のRawBoardをIN = [0] * (BOARD_SIZE * BOARD_SIZE)の状態に変換
+# class Board() のRawBoardをIN = [0] * (BOARD_SIZE * BOARD_SIZE)の形に変換
 def trans(RawBoard_t):
     count = 0
     out = [0] * (BOARD_SIZE * BOARD_SIZE)
@@ -195,10 +195,17 @@ def to_osero():
     w3 = np.insert(w3,0,0,axis=1)
     # -----------------------------------
 
-    NB_EPISODE = 3000
+    buf_action = 0
+    NB_EPISODE = 200
+
+    black_win = 0
+    white_win = 0
+    draw = 0
+    
     for episode in range(NB_EPISODE):
         while True:
-            
+            # 状態を受け取る（経験保存）タイミングは、AG有効手ではない時と、CPが打ち返した時、AG or CPで勝敗がついた時、
+            # パスが生じた時の経験保存がまだ
             if board.Turns % 2 != 0: # コンピュータ　== : 黒（先手）,!= 白（後手）
                 IN = (IN_ALPHABET[random.randint(0,7)],IN_NUMBER[random.randint(0,7)])
                 # 入力手をチェック
@@ -209,15 +216,48 @@ def to_osero():
                     continue
 
                 # 手を打つ
+                IN = trans(board.RawBoard)
                 if not board.move(x, y):
                     continue
+                else:
+                    # 3.3 相手（ＰＣ）手有効時：以前自手（agent）と報酬（0）の保存
+                    IN_next = trans(board.RawBoard)
+                    rewad = 0
+                    action = buf_action
+                    # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
+                    #----------------------------------------
+
+
+                    #----------------------------------------
 
                 # 盤面の表示
-                #board.display()
+                board.display()
  
                 # 終局判定
                 if board.isGameOver():
-                    #grid_env.display()
+                    #board.display()
+                    ## 各色の数
+                    count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
+                    count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
+                    ## 勝敗判定
+                    # 3.4 PC手勝敗時：相手手で打った状態と勝敗による報酬
+                    IN_next = trans(board.RawBoard)
+                    dif = count_black - count_white
+                    if dif > 0:#先手（黒）が勝つ
+                        black_win += 1
+                        reward = 1
+                    elif dif < 0:#後手（白）が勝つ
+                        white_win += 1
+                        reward = -1
+                    elif dif == 0:#引き分け
+                        draw += 1
+                        reward = 0
+                    # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
+                    #----------------------------------------
+                    # この時、3.3　相手有効時の前状態(agent)と今状態(cp最終手)が一緒なので、報酬を上書きする感じ
+
+
+                    #----------------------------------------     
                     break
  
                 # パス
@@ -243,7 +283,7 @@ def to_osero():
                     # 順伝搬計算の出力(Q値)が最大となるインデックスから、行動番号を選択
                     action = ACT[np.argmax(buf['z3'])]
 
-                print('行動:0 ~ ' + str(BOARD_SIZE * BOARD_SIZE) + '内の行動選択肢：' + str(action()))
+                #print('行動:0 ~ ' + str(BOARD_SIZE * BOARD_SIZE) + '内の行動選択肢：' + str(action))
     
                 # 3.行動して、行動したことによって変化した状態 s′ と報酬rの観測
                 # 行動を入力
@@ -256,11 +296,26 @@ def to_osero():
 
                 # 手を打つ
                 if not board.move(x, y):
+                    #3.1 非有効手時:状態は変わらず、マイナス報酬を記録
+                    IN_next = trans(board.RawBoard)
+                    reward = -0.1
+                    # （意味ない）報酬rを報酬値rを-1〜1の範囲にクリップします。単純な方法としては1以上であれば1に。-1以下であれば-1に報酬をクリップします。
+                    if reward > 1:
+                        reward = 1
+                    elif reward < -1:
+                        reward = -1
+                    # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
+                    #----------------------------------------
+
+
+                    #----------------------------------------
                     continue
+                else:
+                    buf_action = action # CP側に行動を渡す
                 
 
                 # 盤面の表示
-                #board.display()
+                board.display()
 
                 # 終局判定
                 if board.isGameOver():
@@ -269,14 +324,23 @@ def to_osero():
                     count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
                     count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
                     ## 勝敗判定
+                    # 3.2 自手勝敗時：自手で打った状態と勝敗による報酬
+                    IN_next = trans(board.RawBoard)
                     dif = count_black - count_white
                     if dif > 0:#先手（黒）が勝つ
                         black_win += 1
+                        reward = 1
                     elif dif < 0:#後手（白）が勝つ
                         white_win += 1
+                        reward = -1
                     elif dif == 0:#引き分け
                         draw += 1
+                        reward = 0
+                    # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
+                    #----------------------------------------
 
+
+                    #----------------------------------------                    
                     break
 
                  # パス
@@ -285,35 +349,17 @@ def to_osero():
                     board.initMovable()
                     #print('パスしました')
                     print()
-                    agent.observe(board.RawBoard, 0)
-                    episode_reward.append(0)
                     continue
 
-                # INが更新される
-                # 報酬：rewardを得る
-
-                IN_next = [0] * (BOARD_SIZE * BOARD_SIZE) # 本当は変化した状態 s′を入れたい
-                reward = 10 # 本当は得られた報酬rを入れたい
-
-                # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存
-                # 報酬rを報酬値rを-1〜1の範囲にクリップします。単純な方法としては1以上であれば1に。-1以下であれば-1に報酬をクリップします。
-                if reward > 1:
-                    reward = 1
-                elif reward < -1:
-                    reward = -1
-                
-                # Experience Bufferに保存：⟨s,a,s′,r⟩の組み合わせだが、どうやって？
-
-
+     
                 # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
 
-
-
-    #ボードの初期化
-    board.__init__()
+        #ボードの初期化
+        board.__init__()
     
-
-
+        # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
+        # 定期的に貯めた経験で学習？手法は分かんない。学習に合わせて、保存方法もチェック
+    
 
     def f(x):
         return (x-1)**2
