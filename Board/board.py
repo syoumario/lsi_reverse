@@ -3,6 +3,7 @@ import numpy as np
 # 行動：x,y = x:1 ~ BOARD_SIZE - 1, y:1 ~ BOARD_SIZE - 1
 # 手番数：self.Turns = 0 → 先手黒スタート
 
+
 # マスの状態
 EMPTY = 0 # 空きマス
 WHITE = -1 # 白石
