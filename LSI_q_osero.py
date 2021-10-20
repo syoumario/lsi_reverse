@@ -10,8 +10,8 @@ BLACK = 1 # 黒石
 WALL = 2 # 壁
  
 # ボードのサイズ
-BOARD_SIZE = 6
- 
+BOARD_SIZE = 4
+
 # 方向(2進数)
 NONE = 0
 LEFT = 2**0 # =1
@@ -512,7 +512,7 @@ class QLearningAgent:
             # Qテーブルにおける現在環境のQ値を最大にとるインデックス（0~3）を選択
             action = np.argmax(self.q_values[self.state])
         # 次エピソードに向けて、前行動に現在行動をセット
-        self.previous_action = action
+        #self.previous_action = action
         # 行動を返す（0~3）
         return action
 
@@ -555,17 +555,17 @@ if __name__ == '__main__':
     agent = QLearningAgent(
         alpha= 0.1,
         gamma= 0.90,
-        epsilon= 0.9,  # 探索率
+        epsilon= 0.1,  # 探索率
         actions= np.arange(BOARD_SIZE * BOARD_SIZE),   # 行動の集合
         observation=ini_state)  # Q学習エージェント
     rewards = []    # 評価用報酬の保存
     
-    cpu_win = 0
-    agent_win = 0
+    black_win = 0
+    white_win = 0
     draw = 0
     
     # 学習
-    NB_EPISODE = 200
+    NB_EPISODE = 3000
     for episode in range(NB_EPISODE):
         episode_reward = []  # 1エピソードの累積報酬
         
@@ -583,6 +583,14 @@ if __name__ == '__main__':
                 # 手を打つ
                 if not board.move(x, y):
                     continue
+                else:
+                    count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
+                    count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
+                    if count_black - count_white > 0:
+                        #現地点で黒が多かったら
+                        agent.observe(board.RawBoard, 0)
+                    else:#現地点で白が多かったら
+                        agent.observe(board.RawBoard, 0)
 
                 # 盤面の表示
                 #board.display()
@@ -603,6 +611,7 @@ if __name__ == '__main__':
             else:
                 # 行動選択して、入力手に変換
                 action = agent.act() 
+                #action_board = (IN_ALPHABET[random.randint(0,7)],IN_NUMBER[random.randint(0,7)])
                 action_board = (IN_ALPHABET[int(action % BOARD_SIZE)],IN_NUMBER[int(action // BOARD_SIZE)])
                 
                 # 入力手をチェック
@@ -611,24 +620,26 @@ if __name__ == '__main__':
                     y = IN_NUMBER.index(action_board[1]) + 1
                 else:
                     print("エラーです。")
-                    agent.observe(board.RawBoard, -5)
-                    episode_reward.append(-1)
+                    agent.observe(board.RawBoard, 0)
+                    episode_reward.append(0)
                     continue
  
                 # 手を打つ
                 if not board.move(x, y):
                     # その入力手では打てないため、マイナス報酬
                     agent.observe(board.RawBoard, 0)
-                    episode_reward.append(-1)
+                    episode_reward.append(0)
                     continue
                 else:
+                    ##ここで実際に手が打てた状態
+                    agent.previous_action = action #clas:act()内でやらず、有効手の場合に、有効手を更新
                     count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
                     count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
                     if count_black - count_white > 0:
                         #現地点で黒が多かったら
-                        agent.observe(board.RawBoard, 10)
+                        agent.observe(board.RawBoard, 0)
                     else:#現地点で白が多かったら
-                        agent.observe(board.RawBoard, -10)
+                        agent.observe(board.RawBoard, 0)
 
                 # 盤面の表示
                 #board.display()
@@ -645,7 +656,7 @@ if __name__ == '__main__':
                     #print('パスしました')
                     print()
                     agent.observe(board.RawBoard, 0)
-                    episode_reward.append(-1)
+                    episode_reward.append(0)
                     continue
                 
         
@@ -659,15 +670,15 @@ if __name__ == '__main__':
         ## 勝敗判定
         dif = count_black - count_white
         if dif > 0:#先手（黒）が勝つ
-            #agent.observe(board.RawBoard, -1000)
-            episode_reward.append(100)
-            cpu_win += 1
+            agent.observe(board.RawBoard, 10)
+            episode_reward.append(10)
+            black_win += 1
         elif dif < 0:#後手（白）が勝つ
-            #agent.observe(board.RawBoard, 1000)
-            episode_reward.append(-100)
-            agent_win += 1
+            agent.observe(board.RawBoard, -10)
+            episode_reward.append(-10)
+            white_win += 1
         elif dif == 0:#引き分け
-            #agent.observe(board.RawBoard, 0)
+            agent.observe(board.RawBoard, 0)
             draw += 1
         
         rewards.append(np.sum(episode_reward)) 
@@ -683,7 +694,9 @@ if __name__ == '__main__':
     plt.savefig("result.jpg")
     print(rewards)
     #print(agent.q_values)
-    print('black_win：' + str(cpu_win))
-    print('white_win：' + str(agent_win))
+    print('black_win：' + str(black_win))
+    print('white_win：' + str(white_win))
     print('draw：' + str(draw))
     #print(agent.q_values)
+
+    #plt.show()
