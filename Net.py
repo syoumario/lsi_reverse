@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import random
 import copy
 from Board.board import Board
+from collections import namedtuple
 
 # マスの状態
 EMPTY = 0 # 空きマス
@@ -134,6 +135,29 @@ class net():
         # 辞書f内の出力z3を返す
         return f['z3']
 
+Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
+
+# 経験を保存するメモリクラス
+class ExperienceMemory():
+    def __init__(self, CAPACITY):
+        self.capacity = CAPACITY
+        self.memory = []
+        self.index = 0
+        
+    def push(self, state, action, state_next, reward):
+        ''' transition をメモリに保存する '''
+        if len(self.memory) < self.capacity:
+            self.memory.append(None)
+        self.memory[self.index] = Transition(state, action, state_next, reward)
+        self.index = (self.index+1) % self.capacity
+        
+    def sample(self, batch_size):
+        ''' batch_size 分だけランダムに保存内容を取り出す '''
+        return random.sample(self.memory, batch_size)
+    
+    def __len__(self):
+        return len(self.memory)
+
 # 実験
     # def test():
     #     def f(x):
@@ -182,13 +206,15 @@ def to_osero():
     Target_network = net()
     Q_network = net()
     board = Board() 
+    memory = ExperienceMemory()
+    memory.__init__(100)
 
     print(trans(board.RawBoard))
 
     # ------------重みの初期化------------
     n1 = len(IN) # 入力の要素数
     n3 = len(OUT) # 入力の要素数
-    n2 = 5 # 中間層のユニット数
+    n2 = BOARD_SIZE * BOARD_SIZE # 中間層のユニット数
     w2 = np.random.normal(0,1,(n2,n1))
     w2 = np.insert(w2,0,0,axis=1)
     w3 = np.random.normal(0,1,(n3,n2))
@@ -255,7 +281,7 @@ def to_osero():
                     # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
                     #----------------------------------------
                     # この時、3.3　相手有効時の前状態(agent)と今状態(cp最終手)が一緒なので、報酬を上書きする感じ
-
+                    memory.
 
                     #----------------------------------------     
                     break
