@@ -88,7 +88,7 @@ class net():
         dw2 = d2.T*z1.T
 
         # 勾配を辞書で返す
-        return dict(dw2=dw2,dw3=dw3)
+        return dict(dw2=dw2,dw3=dw3,d3=d3)
 
     # 確率的勾配降下法：誤差逆伝播法で計算された計数行列の勾配を利用して計数の更新を行う
     def decent(self,x,y,w2,w3,epsilon):
@@ -104,7 +104,7 @@ class net():
         w3 = w3 - epsilon*b['dw3']
 
         # １順で更新された重みを辞書で返す
-        return dict(w2=w2,w3=w3)
+        return dict(w2=w2,w3=w3,d3=b['d3'])
 
     # 係数の初期化と学習の実行
     # 入力X,出力Y：リストor配列：例[[1,2,3],[2,3,4],...]
@@ -272,7 +272,9 @@ def to_osero():
 
 
     buf_action = 0
-    NB_EPISODE = 1000
+    NB_EPISODE = 2000
+
+    error = []
 
     black_win = 0
     black_win_ep = []
@@ -304,6 +306,7 @@ def to_osero():
                     action = buf_action
                     # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
                     memory.push(IN,action,IN_next,rewad)
+                    #print('経験保存')
 
                 # 盤面の表示
                 #board.display()
@@ -329,6 +332,7 @@ def to_osero():
                         reward = 0
                     # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
                     memory.push(IN,action,IN_next,rewad)
+                    #print('経験保存')
 
                     break
  
@@ -369,16 +373,16 @@ def to_osero():
 
                 # 手を打つ
                 if not board.move(x, y):
-                    #3.1 非有効手時:状態は変わらず、マイナス報酬を記録
-                    IN_next = trans(board.RawBoard)
-                    reward = 0
-                    # （意味ない）報酬rを報酬値rを-1〜1の範囲にクリップします。単純な方法としては1以上であれば1に。-1以下であれば-1に報酬をクリップします。
-                    if reward > 1:
-                        reward = 1
-                    elif reward < -1:
-                        reward = -1
-                    # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
-                    memory.push(IN,action,IN_next,reward)
+                    # #3.1 非有効手時:状態は変わらず、マイナス報酬を記録
+                    # IN_next = trans(board.RawBoard)
+                    # reward = 0
+                    # # （意味ない）報酬rを報酬値rを-1〜1の範囲にクリップします。単純な方法としては1以上であれば1に。-1以下であれば-1に報酬をクリップします。
+                    # if reward > 1:
+                    #     reward = 1
+                    # elif reward < -1:
+                    #     reward = -1
+                    # # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
+                    # memory.push(IN,action,IN_next,reward)
 
                     continue
                 else:
@@ -409,6 +413,7 @@ def to_osero():
                         reward = 0
                     # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
                     memory.push(IN,action,IN_next,reward)
+                    #print('経験保存')
 
                     break
 
@@ -425,14 +430,18 @@ def to_osero():
 
         #ボードの初期化
         board.__init__()
-    
         # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
         # 定期的に貯めた経験で学習？手法は分かんない。学習に合わせて、保存方法もチェック
-        if episode % 100 == 0:
-            data = memory.sample(64)
+        if episode % 100 == 0 and episode != 0:
+            #print(episode)
+            # print(len(memory.memory))
+            # print(memory.memory)
+            # print(memory.capacity)
+            # print(memory.index)
+            data = memory.sample(80)
             # Q Networkを学習
             for _ in range(20):
-                for i in range(0,64):
+                for i in range(0,80):
                     buf_data = data[i]
                     # buf = Q_network.ForwardPropagation(buf_data.state, w2, w3)
                     # # x = buf['z3'][buf_data.action]
@@ -465,16 +474,18 @@ def to_osero():
                     w = Q_network.decent(X_train,Y_train,w2,w3,epsilon)
                     w2 = w['w2']
                     w3 = w['w3']
+                    d3 = w['d3']
+                    error.append(max(d3))
                     
                     # print(w['w2'])
             w2_init = w2
             w3_init = w3
             print('経験より学習しました。今のエピソードは' + str(episode))
 
-        #r = dict(w2=w2,w3=w3)
-        # 経験の初期化
-        memory.__init__(100)
-        black_win_ep.append(black_win)
+            #r = dict(w2=w2,w3=w3)
+            # 経験の初期化
+            memory.__init__(100)
+            black_win_ep.append(black_win)
             
     print('Black WIN：' + str(black_win))
     print('White WIN：' + str(white_win))
@@ -482,7 +493,11 @@ def to_osero():
     print(black_win_ep)
     x = range(len(black_win_ep))
     plt.plot(x,black_win_ep)
-    # 傾きが変化していれば、学習していると思う
+    # 傾きが変化していれば、学習していると思う。報酬の与え方で、上か下か
+    plt.show()
+    x = range(len(error))
+    plt.plot(x,error)
+    # 経験を学習する毎における、学習時の誤差の最大値を表示
     plt.show()
 
 if __name__ == '__main__':
