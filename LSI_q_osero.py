@@ -262,6 +262,7 @@ if __name__ == '__main__':
         
 
     # 結果のプロット
+    #saikikikikikikikiikiikiikikiiki
     plt.plot(np.arange(NB_EPISODE), rewards)
     plt.xlabel("episode")
     plt.ylabel("reward")
