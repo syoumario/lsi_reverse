@@ -41,6 +41,12 @@ def sigmoid(x):
 def del_sigmoid(x):
     return sigmoid(x) * (1 - sigmoid(x))
 
+def tanh(x):
+  return (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
+
+def del_tanh(x):
+  return 1.0 - (tanh(x) ** 2)
+
 class net():
 
     # 順伝播計算：入力から出力までを計算する。
@@ -87,10 +93,10 @@ class net():
     # 確率的勾配降下法：誤差逆伝播法で計算された計数行列の勾配を利用して計数の更新を行う
     def decent(self,x,y,w2,w3,epsilon):
         # 順伝播計算をして、fに係数を辞書る。
-        f = ForwardPropagation(x,w2,w3)
+        f = self.ForwardPropagation(x,w2,w3)
 
         # 誤差逆伝播法により、bに勾配を辞書る
-        b = BackPropagation(y,w2,w3,f['z1'],f['z2'],f['z3'],f['u2'])
+        b = self.BackPropagation(y,w2,w3,f['z1'],f['z2'],f['z3'],f['u2'])
 
         # 勾配に基づいて重みを更新
         # 学習率epsilon：係数をどの程度更新するか
@@ -130,10 +136,12 @@ class net():
     # 学習済み係数を用いて予測
     def predict(self,x,w2,w3):
         # 学習済み係数で順伝搬計算
-        f = ForwardPropagation(x,w2,w3)
+        f = self.ForwardPropagation(x,w2,w3)
 
         # 辞書f内の出力z3を返す
         return f['z3']
+    
+
 
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
 
@@ -184,6 +192,45 @@ class ExperienceMemory():
     #     Y_test = [predict(x,w['w2'],w['w3']) for x in X_test]
     #     plt.plot(X_test,Y_test)
     #     plt.show()
+    #     def f(x):
+    #     return (x-1)**2
+    
+    # # サンプルの入力データ
+    # X = np.random.uniform(0,2,50)
+
+    # # 標準偏差0.1、平均0の微妙な誤差を与えた教師データ
+    # Y = f(X) + np.random.normal(0,0.1,50)
+    
+    # # 転置させて、縦で観た方がイメージしやすいと思う
+    # X_train = np.array([X]).T
+    # Y_train = np.array([Y]).T
+
+    
+    # # --------------学習の実行--------------
+    # epoch = 200
+    # epsilon = 0.01
+    # n1 = len(X_train[0])
+    # n3 = len(Y_train[0])
+    # w2 = np.random.normal(0,1,(n2,n1))
+    # w2 = np.insert(w2,0,0,axis=1)
+    # w3 = np.random.normal(0,1,(n3,n2))
+    # w3 = np.insert(w3,0,0,axis=1)
+    # for _ in range(epoch):
+    #     for x,y in zip(X_train,Y_train):
+    #         w = decent(x,y,w2,w3,epsilon)
+    #         w2 = w['w2']
+    #         w3 = w['w3']
+    # r = dict(w2=w2,w3=w3)
+    # # --------------学習の実行--------------
+
+    # # 要素数が等差数列となる配列を生成
+    # X_test = np.linspace(0,2,100)
+
+    # # X_testの要素数分を予測
+    # Y_test = [predict(x,r['w2'],w['w3']) for x in X_test]
+    # plt.plot(X_test,Y_test)
+    # plt.show()
+
 
 # class Board() のRawBoardをIN = [0] * (BOARD_SIZE * BOARD_SIZE)の形に変換
 def trans(RawBoard_t):
@@ -206,8 +253,7 @@ def to_osero():
     Target_network = net()
     Q_network = net()
     board = Board() 
-    memory = ExperienceMemory()
-    memory.__init__(100)
+    memory = ExperienceMemory(100)
 
     print(trans(board.RawBoard))
 
@@ -219,12 +265,17 @@ def to_osero():
     w2 = np.insert(w2,0,0,axis=1)
     w3 = np.random.normal(0,1,(n3,n2))
     w3 = np.insert(w3,0,0,axis=1)
+
+    w2_init = w2
+    w3_init = w3
     # -----------------------------------
 
+
     buf_action = 0
-    NB_EPISODE = 200
+    NB_EPISODE = 1000
 
     black_win = 0
+    black_win_ep = []
     white_win = 0
     draw = 0
     
@@ -232,7 +283,7 @@ def to_osero():
         while True:
             # 状態を受け取る（経験保存）タイミングは、AG有効手ではない時と、CPが打ち返した時、AG or CPで勝敗がついた時、
             # パスが生じた時の経験保存がまだ
-            if board.Turns % 2 != 0: # コンピュータ　== : 黒（先手）,!= 白（後手）
+            if board.Turns % 2 == 0: # コンピュータ　== : 黒（先手）,!= 白（後手）
                 IN = (IN_ALPHABET[random.randint(0,7)],IN_NUMBER[random.randint(0,7)])
                 # 入力手をチェック
                 if board.checkIN(IN):
@@ -241,8 +292,9 @@ def to_osero():
                 else:
                     continue
 
-                # 手を打つ
+                # 状態のbuff
                 IN = trans(board.RawBoard)
+                # 手を打つ
                 if not board.move(x, y):
                     continue
                 else:
@@ -251,13 +303,10 @@ def to_osero():
                     rewad = 0
                     action = buf_action
                     # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
-                    #----------------------------------------
-
-
-                    #----------------------------------------
+                    memory.push(IN,action,IN_next,rewad)
 
                 # 盤面の表示
-                board.display()
+                #board.display()
  
                 # 終局判定
                 if board.isGameOver():
@@ -279,11 +328,8 @@ def to_osero():
                         draw += 1
                         reward = 0
                     # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
-                    #----------------------------------------
-                    # この時、3.3　相手有効時の前状態(agent)と今状態(cp最終手)が一緒なので、報酬を上書きする感じ
-                    memory.
+                    memory.push(IN,action,IN_next,rewad)
 
-                    #----------------------------------------     
                     break
  
                 # パス
@@ -314,6 +360,7 @@ def to_osero():
                 # 3.行動して、行動したことによって変化した状態 s′ と報酬rの観測
                 # 行動を入力
                 action_board = (IN_ALPHABET[int(action % BOARD_SIZE)],IN_NUMBER[int(action // BOARD_SIZE)])
+                #action_board = (IN_ALPHABET[random.randint(0,7)],IN_NUMBER[random.randint(0,7)])
 
                 # 入力手をチェック（基本的に範囲内にある）
                 if board.checkIN(action_board):
@@ -324,24 +371,22 @@ def to_osero():
                 if not board.move(x, y):
                     #3.1 非有効手時:状態は変わらず、マイナス報酬を記録
                     IN_next = trans(board.RawBoard)
-                    reward = -0.1
+                    reward = 0
                     # （意味ない）報酬rを報酬値rを-1〜1の範囲にクリップします。単純な方法としては1以上であれば1に。-1以下であれば-1に報酬をクリップします。
                     if reward > 1:
                         reward = 1
                     elif reward < -1:
                         reward = -1
                     # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
-                    #----------------------------------------
+                    memory.push(IN,action,IN_next,reward)
 
-
-                    #----------------------------------------
                     continue
                 else:
                     buf_action = action # CP側に行動を渡す
                 
 
                 # 盤面の表示
-                board.display()
+                #board.display()
 
                 # 終局判定
                 if board.isGameOver():
@@ -363,10 +408,8 @@ def to_osero():
                         draw += 1
                         reward = 0
                     # 4.経験e=⟨s,a,s′,r⟩をExperience Bufferに保存：⟨s,a,s′,r⟩の組み合わせ
-                    #----------------------------------------
+                    memory.push(IN,action,IN_next,reward)
 
-
-                    #----------------------------------------                    
                     break
 
                  # パス
@@ -385,45 +428,61 @@ def to_osero():
     
         # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
         # 定期的に貯めた経験で学習？手法は分かんない。学習に合わせて、保存方法もチェック
-    
+        if episode % 100 == 0:
+            data = memory.sample(64)
+            # Q Networkを学習
+            for _ in range(20):
+                for i in range(0,64):
+                    buf_data = data[i]
+                    # buf = Q_network.ForwardPropagation(buf_data.state, w2, w3)
+                    # # x = buf['z3'][buf_data.action]
+                    # x = buf['z3']
+                    # print(x)
+                    buf = Target_network.ForwardPropagation(buf_data.next_state, w2_init, w3_init)
+                    # max意外をゼロにする！
+                    max_q = buf['z3'][0]
+                    max_act_p = 0
+                    for ii in range(0,BOARD_SIZE * BOARD_SIZE):
+                        if max_q < buf['z3'][ii]:
+                            max_q = buf['z3'][ii]
+                            max_act_p = ii
+                    for ii in range(0,BOARD_SIZE * BOARD_SIZE):
+                        if ii != max_act_p:
+                            buf['z3'][ii] = 0
+                        else:
+                            buf['z3'][ii] = buf_data.reward + 0.9 * buf['z3'][ii]
+                        Q_nextstae_max = buf['z3'][ii]
+                    y = Q_nextstae_max
+                    # print(y)
 
-    def f(x):
-        return (x-1)**2
-    
-    # サンプルの入力データ
-    X = np.random.uniform(0,2,50)
+                    X_train = np.array(buf_data.state).T
+                    Y_train = np.array(sum(y)).T
+                    # print(X_train)
+                    # print(Y_train)
 
-    # 標準偏差0.1、平均0の微妙な誤差を与えた教師データ
-    Y = f(X) + np.random.normal(0,0.1,50)
-    
-    # 転置させて、縦で観た方がイメージしやすいと思う
-    X_train = np.array([X]).T
-    Y_train = np.array([Y]).T
+                    # Ｑネットワーク：順伝播計算はあっていると思うんで、誤差逆伝播法と確率的勾配降下法のところを新たに作る！
+                    # 入力：状態、出力：Ｑ値は同じに、誤差を教師でｙ－ｘが最小になるように重みを１ステップ更新する式
+                    w = Q_network.decent(X_train,Y_train,w2,w3,epsilon)
+                    w2 = w['w2']
+                    w3 = w['w3']
+                    
+                    # print(w['w2'])
+            w2_init = w2
+            w3_init = w3
+            print('経験より学習しました。今のエピソードは' + str(episode))
 
-    
-    # --------------学習の実行--------------
-    epoch = 200
-    epsilon = 0.01
-    n1 = len(X_train[0])
-    n3 = len(Y_train[0])
-    w2 = np.random.normal(0,1,(n2,n1))
-    w2 = np.insert(w2,0,0,axis=1)
-    w3 = np.random.normal(0,1,(n3,n2))
-    w3 = np.insert(w3,0,0,axis=1)
-    for _ in range(epoch):
-        for x,y in zip(X_train,Y_train):
-            w = decent(x,y,w2,w3,epsilon)
-            w2 = w['w2']
-            w3 = w['w3']
-    r = dict(w2=w2,w3=w3)
-    # --------------学習の実行--------------
-
-    # 要素数が等差数列となる配列を生成
-    X_test = np.linspace(0,2,100)
-
-    # X_testの要素数分を予測
-    Y_test = [predict(x,r['w2'],w['w3']) for x in X_test]
-    plt.plot(X_test,Y_test)
+        #r = dict(w2=w2,w3=w3)
+        # 経験の初期化
+        memory.__init__(100)
+        black_win_ep.append(black_win)
+            
+    print('Black WIN：' + str(black_win))
+    print('White WIN：' + str(white_win))
+    print('draw：' + str(draw))
+    print(black_win_ep)
+    x = range(len(black_win_ep))
+    plt.plot(x,black_win_ep)
+    # 傾きが変化していれば、学習していると思う
     plt.show()
 
 if __name__ == '__main__':
