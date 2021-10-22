@@ -16,6 +16,10 @@ def tanh(x):
 def del_tanh(x):
   return 1.0 - (tanh(x) ** 2)
 
+def huber_loss(x,y,delta = 1.0):
+    diff = abs(x - y)
+    return np.where(diff <= delta, 0.5 * diff**2, delta * (diff - 0.5 * delta))
+
 class net():
 
     # 順伝播計算：入力から出力までを計算する。
@@ -45,7 +49,8 @@ class net():
     # 他：各係数行列
     def BackPropagation(self,y,w2,w3,z1,z2,z3,u2):
         # 出力と教師の誤差を計算
-        d3 = (z3 - np.array(y)).T
+        # d3 = (z3 - np.array(y)).T
+        d3 = huber_loss(z3, np.array(y), 1.0).T
 
         #　シグモイドの場合の誤差逆伝播法における勾配式
         d2 = np.dot(d3,w3)[:,1:]*del_sigmoid(u2).T
