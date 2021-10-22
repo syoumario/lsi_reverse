@@ -45,7 +45,7 @@ class net():
     # 他：各係数行列
     def BackPropagation(self,y,w2,w3,z1,z2,z3,u2):
         # 出力と教師の誤差を計算
-        d3 = (z3 - np.array([y]).T).T
+        d3 = (z3 - np.array(y)).T
 
         #　シグモイドの場合の誤差逆伝播法における勾配式
         d2 = np.dot(d3,w3)[:,1:]*del_sigmoid(u2).T
