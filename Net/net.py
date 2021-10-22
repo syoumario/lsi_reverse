@@ -20,6 +20,7 @@ def huber_loss(x,y,delta = 1.0):
     diff = abs(x - y)
     return np.where(diff <= delta, 0.5 * diff**2, delta * (diff - 0.5 * delta))
 
+
 class net():
 
     # 順伝播計算：入力から出力までを計算する。
