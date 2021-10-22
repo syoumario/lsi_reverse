@@ -87,7 +87,7 @@ def to_osero():
     white_win = 0
     draw = 0
 
-    NB_EPISODE = 2000
+    NB_EPISODE = 200
     
     for episode in range(NB_EPISODE):
         while True: # 1 game
