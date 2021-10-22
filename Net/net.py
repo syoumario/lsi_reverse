@@ -29,7 +29,6 @@ class net():
         # 重みと内積するために、転置させて一列にする
         # 分からんけど、最初の行に新たに行[1,1,..]を挿入する。-----なぜかを聞く！
         z1 = np.insert(np.array([x]).T,0,1,axis=0)
-
         #　重みと入力の内積をとる。出力例：[?,?]の１行
         u2 = np.dot(w2,z1)
 
@@ -49,8 +48,7 @@ class net():
     # 他：各係数行列
     def BackPropagation(self,y,w2,w3,z1,z2,z3,u2):
         # 出力と教師の誤差を計算
-        d3 = huber_loss(z3, np.array([y]).T, 1.0)
-        print(d3)
+        d3 = huber_loss(z3, np.array(y).T, 1.0)
         #　シグモイドの場合の誤差逆伝播法における勾配式
         d2 = np.dot(d3,w3)[:,1:]*del_sigmoid(u2).T
 
