@@ -87,7 +87,7 @@ def to_osero():
     white_win = 0
     draw = 0
 
-    NB_EPISODE = 2000
+    NB_EPISODE = 200
     
     for episode in range(NB_EPISODE):
         while True: # 1 game
@@ -206,7 +206,7 @@ def to_osero():
         #ボードの初期化
         board.__init__(BOARD_SIZE)
 
-        # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
+        # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習したい(Experience Replay)
         if episode % 100 == 0 and episode != 0:
             w2_init = copy.deepcopy(w2) # Target_network用に重みを固定
             w3_init = copy.deepcopy(w3) # Target_network用に重みを固定
