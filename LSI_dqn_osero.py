@@ -272,11 +272,11 @@ def to_osero():
                         else:
                             buf['z3'][ii] = buf_data.reward + 0.9 * buf['z3'][ii]
                         Q_nextstae_max = buf['z3'][ii]
-                    y = Q_nextstae_max
+                    y = buf['z3']
                     # print(y)
 
                     X_train = np.array(buf_data.state).T
-                    Y_train = np.array(sum(y)).T
+                    Y_train = np.array(y)
                     # print(X_train)
                     # print(Y_train)
 
