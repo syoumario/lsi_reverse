@@ -8,9 +8,6 @@ EMPTY = 0 # 空きマス
 WHITE = -1 # 白石
 BLACK = 1 # 黒石
 WALL = 2 # 壁
- 
-# ボードのサイズ
-BOARD_SIZE = 4
 
 # 方向(2進数)
 NONE = 0
@@ -27,30 +24,29 @@ LOWER_LEFT = 2**7 # =128
 IN_ALPHABET = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 IN_NUMBER = ['1', '2', '3', '4', '5', '6', '7', '8']
  
-# 手数の上限
-MAX_TURNS = 60
-
 class Board:
 
-    def __init__(self):
+    def __init__(self,board_size):
         """
         ボードの表現
         """ 
- 
+        # ボードのサイズ
+        self.BOARD_SIZE = board_size
+
         # 全マスを空きマスに設定
-        self.RawBoard = np.zeros((BOARD_SIZE + 2, BOARD_SIZE + 2), dtype=int)
+        self.RawBoard = np.zeros((self.BOARD_SIZE + 2, self.BOARD_SIZE + 2), dtype=int)
  
         # 壁の設定
         self.RawBoard[0, :] = WALL
         self.RawBoard[:, 0] = WALL
-        self.RawBoard[BOARD_SIZE + 1, :] = WALL
-        self.RawBoard[:, BOARD_SIZE + 1] = WALL
+        self.RawBoard[self.BOARD_SIZE + 1, :] = WALL
+        self.RawBoard[:, self.BOARD_SIZE + 1] = WALL
  
         # 初期配置
-        self.RawBoard[BOARD_SIZE //2 , BOARD_SIZE //2] = WHITE
-        self.RawBoard[BOARD_SIZE //2 + 1, BOARD_SIZE //2 + 1] = WHITE
-        self.RawBoard[BOARD_SIZE //2, BOARD_SIZE //2 + 1] = BLACK
-        self.RawBoard[BOARD_SIZE //2 + 1, BOARD_SIZE //2] = BLACK
+        self.RawBoard[self.BOARD_SIZE //2 , self.BOARD_SIZE //2] = WHITE
+        self.RawBoard[self.BOARD_SIZE //2 + 1, self.BOARD_SIZE //2 + 1] = WHITE
+        self.RawBoard[self.BOARD_SIZE //2, self.BOARD_SIZE //2 + 1] = BLACK
+        self.RawBoard[self.BOARD_SIZE //2 + 1, self.BOARD_SIZE //2] = BLACK
  
         # 手番
         self.Turns = 0
@@ -59,11 +55,14 @@ class Board:
         self.CurrentColor = BLACK
  
         # 置ける場所と石が返る方向
-        self.MovablePos = np.zeros((BOARD_SIZE + 2, BOARD_SIZE + 2), dtype=int)
-        self.MovableDir = np.zeros((BOARD_SIZE + 2, BOARD_SIZE + 2), dtype=int)
+        self.MovablePos = np.zeros((self.BOARD_SIZE + 2, self.BOARD_SIZE + 2), dtype=int)
+        self.MovableDir = np.zeros((self.BOARD_SIZE + 2, self.BOARD_SIZE + 2), dtype=int)
  
         # MovablePosとMovableDirを初期化
         self.initMovable()
+
+        # 手数の上限
+        self.MAX_TURNS = self.BOARD_SIZE * self.BOARD_SIZE - 4
  
     def checkMobility(self, x, y, color):
         """
@@ -332,9 +331,9 @@ class Board:
         """
  
         # 置く位置が正しいかどうかをチェック
-        if x < 1 or BOARD_SIZE < x:
+        if x < 1 or self.BOARD_SIZE < x:
             return False
-        if y < 1 or BOARD_SIZE < y:
+        if y < 1 or self.BOARD_SIZE < y:
             return False
         if self.MovablePos[x, y] == 0:
             return False
@@ -361,8 +360,8 @@ class Board:
         self.MovablePos[:, :] = False
  
         # すべてのマス（壁を除く）に対してループ
-        for x in range(1, BOARD_SIZE + 1):
-            for y in range(1, BOARD_SIZE + 1):
+        for x in range(1, self.BOARD_SIZE + 1):
+            for y in range(1, self.BOARD_SIZE + 1):
  
                 # checkMobility関数の実行
                 dir = self.checkMobility(x, y, self.CurrentColor)
@@ -379,7 +378,7 @@ class Board:
         終局判定
         """
         # 60手に達していたらゲーム終了
-        if self.Turns >= MAX_TURNS:
+        if self.Turns >= self.MAX_TURNS:
             return True
  
         # (現在の手番)打てる手がある場合はゲームを終了しない
@@ -387,8 +386,8 @@ class Board:
             return False
  
         # (相手の手番)打てる手がある場合はゲームを終了しない
-        for x in range(1, BOARD_SIZE + 1):
-            for y in range(1, BOARD_SIZE + 1):
+        for x in range(1, self.BOARD_SIZE + 1):
+            for y in range(1, self.BOARD_SIZE + 1):
  
                 # 置ける場所が1つでもある場合はゲーム終了ではない
                 if self.checkMobility(x, y, - self.CurrentColor) != 0:
@@ -425,12 +424,12 @@ class Board:
         # 横軸
         print(' abcdefgh')
         # 縦軸方向へのマスのループ
-        for y in range(1, BOARD_SIZE + 1):
+        for y in range(1, self.BOARD_SIZE + 1):
  
             # 縦軸
             print(y, end="")
             # 横軸方向へのマスのループ
-            for x in range(1, BOARD_SIZE + 1):
+            for x in range(1, self.BOARD_SIZE + 1):
  
                 # マスの種類(数値)をgridに代入
                 grid = self.RawBoard[x, y]
