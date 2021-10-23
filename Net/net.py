@@ -34,7 +34,7 @@ class net():
         u2 = np.dot(w2,z1)
 
         # シグモイド関数でu2:0~1に変換して、転置させて１列にする
-        z2 = np.insert(sigmoid(u2),0,1,axis=0)
+        z2 = np.insert(tanh(u2),0,1,axis=0)
         # tanh()の場合
         # z2 = np.insert(sigmoid(u2),0,1,axis=0)
 
@@ -55,7 +55,7 @@ class net():
         # d3 = huber_loss(z3, np.array(y), 1.0).T
 
         #　シグモイドの場合の誤差逆伝播法における勾配式
-        d2 = np.dot(d3,w3)[:,1:]*del_sigmoid(u2).T
+        d2 = np.dot(d3,w3)[:,1:]*del_tanh(u2).T
         # tanh()の場合
         # d2 = np.dot(d3,w3)[:,1:]*del_tanh(u2).T
 

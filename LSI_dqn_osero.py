@@ -91,10 +91,10 @@ def to_osero():
     epsilon_end = 0.05
     epsilon_decay = 100
 
-    NB_EPISODE = 2000
+    NB_EPISODE = 200
     
     for episode in range(NB_EPISODE):
-        while True: # 1 game play
+        while True: # 1 game play：board.Turnsで打ちてを判定
             if board.Turns % 2 == 0: 
                 # 状態を観測する
                 state = trans(board.RawBoard)
@@ -215,53 +215,60 @@ def to_osero():
             w2_init = copy.deepcopy(w2) # Target_network用に重みを固定
             w3_init = copy.deepcopy(w3) # Target_network用に重みを固定
             # 経験をランダムサンプリング
-            memory_num = 40
+            memory_num = 50
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
-            Epoch_Q = 200
-            Bach_Size_Q = 40
+            Epoch_Q = 2000
+            Bach_Size_Q = 10
             for _ in range(0,Epoch_Q):
-                Random_index = random.sample(range(memory_num), k=Bach_Size_Q)
-                for i in range(0,Bach_Size_Q):
-                    buf_data = data[Random_index[i]]
-                    #buf_data = data[i]
+                Random_index = random.sample(range(memory_num), k=memory_num)
+                Batc_count = 0
+                for k in range(0, memory_num // Bach_Size_Q):
+                    Batc_count = Bach_Size_Q * k
+                    for i in range(Batc_count,Bach_Size_Q + Batc_count):
+                        buf_data = data[Random_index[i]]
+                        #buf_data = data[i]
 
-                    # 遷移状態におけるTarget_network出力のmaxQ値を取得
-                    buf = Target_network.ForwardPropagation(buf_data.next_state, w2_init, w3_init)
+                        # 遷移状態におけるTarget_network出力のmaxQ値を取得
+                        buf = Target_network.ForwardPropagation(buf_data.next_state, w2_init, w3_init)
 
-                    # maxQ値を今回の行動値にセットし、それ以外を0でマスク処理
-                    # 必要か分かんない
-                    max_Q = buf['z3'][0]
-                    max_Q_index = 0
-                    Q_nextstae_max = copy.deepcopy(buf['z3'])
-                    for ii in range(0,BOARD_SIZE * BOARD_SIZE):
-                        Q_nextstae_max[ii] = 0
-                        if max_Q < buf['z3'][ii]:
-                            max_Q = buf['z3'][ii]
-                            max_Q_index = ii
-                    Q_nextstae_max[buf_data.action][0] = buf_data.reward + 0.99 * max_Q
-                    y = copy.deepcopy(Q_nextstae_max)
+                        # maxQ値を今回の行動値にセットし、それ以外を0でマスク処理
+                        # 必要か分かんない
+                        max_Q = buf['z3'][0]
+                        max_Q_index = 0
+                        Q_nextstae_max = copy.deepcopy(buf['z3'])
+                        for ii in range(0,BOARD_SIZE * BOARD_SIZE):
+                            Q_nextstae_max[ii] = 0
+                            if max_Q < buf['z3'][ii]:
+                                max_Q = buf['z3'][ii]
+                                max_Q_index = ii
+                        Q_nextstae_max[buf_data.action][0] = buf_data.reward + 0.99 * max_Q
+                        y = copy.deepcopy(Q_nextstae_max)
 
-                    Y_train = np.array(y)
+                        Y_train = np.array(y)
 
-                    # 順伝播計算をして、fに係数を辞書る。
-                    f = Q_network.ForwardPropagation(buf_data.state,w2,w3)
+                        # 順伝播計算をして、fに係数を辞書る。
+                        f = Q_network.ForwardPropagation(buf_data.state,w2,w3)
+                        
+                        # これも必要か分かんない。誤差計算時に、その行動以外をゼロにする。
+                        for ii in range(0,BOARD_SIZE * BOARD_SIZE):
+                            if ii != buf_data.action:
+                                f['z3'][ii] = 0          
+
+                        # 誤差逆伝播法により、bに勾配を辞書る
+                        b = Q_network.BackPropagation(Y_train,w2,w3,f['z1'],f['z2'],f['z3'],f['u2'])
+
+                        # 勾配に基づいて重みを更新
+                        w2 = copy.deepcopy(w2 - epsilon*b['dw2'] / Bach_Size_Q)
+                        w3 = copy.deepcopy(w3 - epsilon*b['dw3'] / Bach_Size_Q)
+                        d3 = b['d3']
+
+                        error.append(max(max(abs(d3), key=max)))
+                        #print(w['w2'])
+
                     
-                    # これも必要か分かんない。誤差計算時に、その行動以外をゼロにする。
-                    for ii in range(0,BOARD_SIZE * BOARD_SIZE):
-                        if ii != buf_data.action:
-                            f['z3'][ii] = 0          
+                        
 
-                    # 誤差逆伝播法により、bに勾配を辞書る
-                    b = Q_network.BackPropagation(Y_train,w2,w3,f['z1'],f['z2'],f['z3'],f['u2'])
-
-                    # 勾配に基づいて重みを更新
-                    w2 = copy.deepcopy(w2 - epsilon*b['dw2'])
-                    w3 = copy.deepcopy(w3 - epsilon*b['dw3'])
-                    d3 = b['d3']
-
-                    error.append(max(max(abs(d3), key=max)))
-                    #print(w['w2'])
             print('経験より学習しました。今のエピソードは' + str(episode))
 
             # 経験の初期化
