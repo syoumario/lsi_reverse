@@ -8,6 +8,7 @@ from Board.board import Board
 from Net.net import net
 from collections import namedtuple
 
+
 # マスの状態
 EMPTY = 0 # 空きマス
 WHITE = -1 # 白石
@@ -69,8 +70,6 @@ def to_osero():
     board = Board(BOARD_SIZE) 
     memory = ExperienceMemory(100)
 
-    epsilon = 0.1
-
     # 重みの初期化
     n1 = len(IN) # 入力の要素数
     n3 = len(OUT) # 入力の要素数
@@ -80,26 +79,31 @@ def to_osero():
     w3 = np.random.normal(0,1,(n3,n2))
     w3 = np.insert(w3,0,0,axis=1)
 
-    # 記録の可視化用
+    # 記録の可視化
     error = []
     black_win = 0
     black_win_ep = []
     white_win = 0
     draw = 0
 
-    NB_EPISODE = 200
+    # εグリーディー戦略
+    epsilon_start = 0.9
+    epsilon_end = 0.05
+    epsilon_decay = 100
+
+    NB_EPISODE = 2000
     
     for episode in range(NB_EPISODE):
-        while True: # 1 game
+        while True: # 1 game play
             if board.Turns % 2 == 0: 
                 # 状態を観測する
                 state = trans(board.RawBoard)
-
+    
                 # 状態をTarget NetworkQ(s′,a|θ−)に入力：重みは経験学習まで一定
                 buf = Target_network.ForwardPropagation(state, w2, w3)
 
                 # Target Networkから出力されたQ値を元に,ε-greedy選択法で行動選択
-                epsilon = 0.1
+                epsilon = epsilon_end + (epsilon_start - epsilon_end) * np.exp(- episode / epsilon_decay)
                 if np.random.uniform() < epsilon:
                     # ランダム行動
                     action = np.random.randint(0, len(ACT))
@@ -138,10 +142,10 @@ def to_osero():
                     dif = count_black - count_white
                     if dif > 0:#先手（黒）が勝つ
                         black_win += 1
-                        reward = -1
+                        reward = 1
                     elif dif < 0:#後手（白）が勝つ
                         white_win += 1
-                        reward = 1
+                        reward = -1
                     elif dif == 0:#引き分け
                         draw += 1
                         reward = 0
@@ -160,7 +164,7 @@ def to_osero():
 
                 buf = Target_network.ForwardPropagation(state, w2, w3)
 
-                epsilon = 0.1
+                epsilon = epsilon_end + (epsilon_start - epsilon_end) * np.exp(- episode / epsilon_decay)
                 if np.random.uniform() < epsilon:
                     action = np.random.randint(0, len(ACT))
                 else:   
@@ -188,10 +192,10 @@ def to_osero():
                     dif = count_black - count_white
                     if dif > 0:#先手（黒）が勝つ
                         black_win += 1
-                        reward = -1
+                        reward = 1
                     elif dif < 0:#後手（白）が勝つ
                         white_win += 1
-                        reward = 1
+                        reward = -1
                     elif dif == 0:#引き分け
                         draw += 1
                         reward = 0
@@ -207,15 +211,15 @@ def to_osero():
         board.__init__(BOARD_SIZE)
 
         # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
-        if episode % 100 == 0 and episode != 0:
+        if episode % 50 == 0 and episode != 0:
             w2_init = copy.deepcopy(w2) # Target_network用に重みを固定
             w3_init = copy.deepcopy(w3) # Target_network用に重みを固定
             # 経験をランダムサンプリング
-            memory_num = 80
+            memory_num = 40
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
             Epoch_Q = 200
-            Bach_Size_Q = 80
+            Bach_Size_Q = 40
             for _ in range(0,Epoch_Q):
                 Random_index = random.sample(range(memory_num), k=Bach_Size_Q)
                 for i in range(0,Bach_Size_Q):
@@ -226,6 +230,7 @@ def to_osero():
                     buf = Target_network.ForwardPropagation(buf_data.next_state, w2_init, w3_init)
 
                     # maxQ値を今回の行動値にセットし、それ以外を0でマスク処理
+                    # 必要か分かんない
                     max_Q = buf['z3'][0]
                     max_Q_index = 0
                     Q_nextstae_max = copy.deepcopy(buf['z3'])
@@ -234,18 +239,18 @@ def to_osero():
                         if max_Q < buf['z3'][ii]:
                             max_Q = buf['z3'][ii]
                             max_Q_index = ii
-                    Q_nextstae_max[buf_data.action][0] = buf_data.reward + 0.9 * max_Q
+                    Q_nextstae_max[buf_data.action][0] = buf_data.reward + 0.99 * max_Q
                     y = copy.deepcopy(Q_nextstae_max)
 
                     Y_train = np.array(y)
 
                     # 順伝播計算をして、fに係数を辞書る。
                     f = Q_network.ForwardPropagation(buf_data.state,w2,w3)
-
-                    # 必要か分かんない
+                    
+                    # これも必要か分かんない。誤差計算時に、その行動以外をゼロにする。
                     for ii in range(0,BOARD_SIZE * BOARD_SIZE):
                         if ii != buf_data.action:
-                            f['z3'][ii] = 0                   
+                            f['z3'][ii] = 0          
 
                     # 誤差逆伝播法により、bに勾配を辞書る
                     b = Q_network.BackPropagation(Y_train,w2,w3,f['z1'],f['z2'],f['z3'],f['u2'])
@@ -256,7 +261,6 @@ def to_osero():
                     d3 = b['d3']
 
                     error.append(max(max(abs(d3), key=max)))
-                    
                     #print(w['w2'])
             print('経験より学習しました。今のエピソードは' + str(episode))
 

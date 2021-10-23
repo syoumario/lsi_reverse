@@ -35,6 +35,8 @@ class net():
 
         # シグモイド関数でu2:0~1に変換して、転置させて１列にする
         z2 = np.insert(sigmoid(u2),0,1,axis=0)
+        # tanh()の場合
+        # z2 = np.insert(sigmoid(u2),0,1,axis=0)
 
         # 重みとの内積をとる。出力例：[?,?]の１行
         u3 = np.dot(w3,z2)
@@ -49,11 +51,13 @@ class net():
     # 他：各係数行列
     def BackPropagation(self,y,w2,w3,z1,z2,z3,u2):
         # 出力と教師の誤差を計算
-        # d3 = (z3 - np.array(y)).T
-        d3 = huber_loss(z3, np.array(y), 1.0).T
+        d3 = (z3 - np.array(y)).T
+        # d3 = huber_loss(z3, np.array(y), 1.0).T
 
         #　シグモイドの場合の誤差逆伝播法における勾配式
         d2 = np.dot(d3,w3)[:,1:]*del_sigmoid(u2).T
+        # tanh()の場合
+        # d2 = np.dot(d3,w3)[:,1:]*del_tanh(u2).T
 
         #
         dw3 = d3.T*z2.T
