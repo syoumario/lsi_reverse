@@ -70,7 +70,7 @@ def to_osero():
     board = Board(BOARD_SIZE) 
     memory = ExperienceMemory(100)
 
-    # 重みの初期化
+    # 重みの初期化　学習時のランダム初期値で結果が異なる場合がある。
     n1 = len(IN) # 入力の要素数
     n3 = len(OUT) # 入力の要素数
     n2 = BOARD_SIZE * BOARD_SIZE # 中間層のユニット数
@@ -86,12 +86,14 @@ def to_osero():
     white_win = 0
     draw = 0
 
+    # エピソード数
+    NB_EPISODE = 800
+
     # εグリーディー戦略
     epsilon_start = 0.9
     epsilon_end = 0.05
-    epsilon_decay = 100
-
-    NB_EPISODE = 200
+    # epsilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
+    epsilon_decay = 10 # この値を変えるだけで、全然違う。
     
     for episode in range(NB_EPISODE):
         while True: # 1 game play：board.Turnsで打ちてを判定
@@ -113,6 +115,7 @@ def to_osero():
                 
                 # 一度ワンクッションしてる（後で直したい）
                 action_board = (IN_ALPHABET[int(action % BOARD_SIZE)],IN_NUMBER[int(action // BOARD_SIZE)])
+                # action_board = (IN_ALPHABET[random.randint(0,7)],IN_NUMBER[random.randint(0,7)])
 
                 # 入力手をチェック（基本的に範囲内にある）
                 if board.checkIN(action_board):
@@ -218,7 +221,7 @@ def to_osero():
             memory_num = 50
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
-            Epoch_Q = 2000
+            Epoch_Q = 600 # 200くらいもよかった
             Bach_Size_Q = 10
             for _ in range(0,Epoch_Q):
                 Random_index = random.sample(range(memory_num), k=memory_num)
@@ -235,14 +238,12 @@ def to_osero():
                         # maxQ値を今回の行動値にセットし、それ以外を0でマスク処理
                         # 必要か分かんない
                         max_Q = buf['z3'][0]
-                        max_Q_index = 0
                         Q_nextstae_max = copy.deepcopy(buf['z3'])
                         for ii in range(0,BOARD_SIZE * BOARD_SIZE):
                             Q_nextstae_max[ii] = 0
                             if max_Q < buf['z3'][ii]:
                                 max_Q = buf['z3'][ii]
-                                max_Q_index = ii
-                        Q_nextstae_max[buf_data.action][0] = buf_data.reward + 0.99 * max_Q
+                        Q_nextstae_max[buf_data.action] = buf_data.reward + 0.99 * max_Q
                         y = copy.deepcopy(Q_nextstae_max)
 
                         Y_train = np.array(y)
@@ -250,15 +251,16 @@ def to_osero():
                         # 順伝播計算をして、fに係数を辞書る。
                         f = Q_network.ForwardPropagation(buf_data.state,w2,w3)
                         
-                        # これも必要か分かんない。誤差計算時に、その行動以外をゼロにする。
-                        for ii in range(0,BOARD_SIZE * BOARD_SIZE):
-                            if ii != buf_data.action:
-                                f['z3'][ii] = 0          
+                        # これも必要か分かんない。誤差計算時に、その行動以外をゼロにする。これ必要ない！！
+                        # for ii in range(0,BOARD_SIZE * BOARD_SIZE):
+                        #     if ii != buf_data.action:
+                        #         f['z3'][ii] = 0          
 
                         # 誤差逆伝播法により、bに勾配を辞書る
                         b = Q_network.BackPropagation(Y_train,w2,w3,f['z1'],f['z2'],f['z3'],f['u2'])
 
                         # 勾配に基づいて重みを更新
+                        epsilon = 0.1 # 時によっては、ε-greedy行動選択と同じ値を使ってた。バッチサイズを合わせて調整。0.1くらいがいいかも
                         w2 = copy.deepcopy(w2 - epsilon*b['dw2'] / Bach_Size_Q)
                         w3 = copy.deepcopy(w3 - epsilon*b['dw3'] / Bach_Size_Q)
                         d3 = b['d3']
