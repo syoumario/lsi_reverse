@@ -438,9 +438,9 @@ class Board:
                 if grid == EMPTY: # 空きマス
                     print('□', end="")
                 elif grid == WHITE: # 白石
-                    print('◌', end="")
-                elif grid == BLACK: # 黒石
                     print('●', end="")
+                elif grid == BLACK: # 黒石
+                    print('◌', end="")
  
             # 最後に改行
             print()
