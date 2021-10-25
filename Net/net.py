@@ -104,7 +104,7 @@ class net():
         # 学習実行
         for _ in range(epoch):
             for x,y in zip(X,Y):
-                w = decent(x,y,w2,w3,epsilon)
+                w = self.decent(x,y,w2,w3,epsilon)
                 w2 = w['w2']
                 w3 = w['w3']
 
