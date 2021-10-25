@@ -1,5 +1,3 @@
-#参考資料：http://deepblue-ts.co.jp/deep-learning/3layer_nn_fullscratch_2/
-
 import numpy as np
 import matplotlib.pyplot as plt
 import random
@@ -19,7 +17,7 @@ IN_ALPHABET = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 IN_NUMBER = ['1', '2', '3', '4', '5', '6', '7', '8']
  
 # ボードのサイズ
-BOARD_SIZE = 6
+BOARD_SIZE = 4
 
 # 経験保存時の名前
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
@@ -92,12 +90,12 @@ def to_osero():
     # εグリーディー戦略
     epsilon_start = 0.9
     epsilon_end = 0.05
-    # epsilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
-    epsilon_decay = 10 # この値を変えるだけで、全然違う。
+    epsilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
+    # epsilon_decay = 10 # この値を変えるだけで、全然違う。
     
     for episode in range(0, NB_EPISODE):
-        while True: # 1 game play：board.Turnsで打ちてを判定
-            if board.Turns % 2 == 0: 
+        while True: # 1 game play：board.Turnsで打ちてを判定 4×4だと先行不利なので、先行DQN
+            if board.Turns % 2 == 0: # DQN
                 # 状態を観測する
                 state = trans(board.RawBoard)
     
@@ -115,66 +113,20 @@ def to_osero():
                 
                 # 一度ワンクッションしてる（後で直したい）
                 action_board = (IN_ALPHABET[int(action % BOARD_SIZE)],IN_NUMBER[int(action // BOARD_SIZE)])
-                # action_board = (IN_ALPHABET[random.randint(0,7)],IN_NUMBER[random.randint(0,7)])
 
                 # 入力手をチェック（基本的に範囲内にある）
                 if board.checkIN(action_board):
                     x = IN_ALPHABET.index(action_board[0]) + 1
                     y = IN_NUMBER.index(action_board[1]) + 1
 
-                # 手を打つ
+                # 手を打つ（相手が打ってから、経験を保存する。）
                 if not board.move(x, y):
                     continue
-                else:
-                    # 状態 s′ と報酬rの観測
-                    state_next = trans(board.RawBoard)
-                    reward = 0
-                    # 経験の保存：⟨s,a,s′,r⟩
-                    memory.push(state,action,state_next,reward)
                 
-                # 盤面の表示
-                # board.display()
+            else: # random
 
-                # 終局判定
-                if board.isGameOver():
-                    # 各色の数
-                    count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
-                    count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
-                    # 勝敗判定と報酬の観測
-                    state_next = trans(board.RawBoard)
-                    dif = count_black - count_white
-                    if dif > 0:#先手（黒）が勝つ
-                        black_win += 1
-                        black_win_interval += 1
-                        reward = 1
-                    elif dif < 0:#後手（白）が勝つ
-                        white_win += 1
-                        reward = -1
-                    elif dif == 0:#引き分け
-                        draw += 1
-                        reward = 0
-                    # 経験の保存
-                    memory.push(state,action,state_next,reward)
-                    break
-
-                # パス
-                if not board.MovablePos[:, :].any():
-                    board.CurrentColor = - board.CurrentColor
-                    board.initMovable()
-                    continue
-
-            else:
-                state = trans(board.RawBoard)
-
-                buf = Target_network.ForwardPropagation(state, w2, w3)
-
-                epsilon = epsilon_end + (epsilon_start - epsilon_end) * np.exp(- episode / epsilon_decay)
-                if np.random.uniform() < epsilon:
-                    action = np.random.randint(0, len(ACT))
-                else:   
-                    action = ACT[np.argmax(buf['z3'])]
-                
-                action_board = (IN_ALPHABET[int(action % BOARD_SIZE)],IN_NUMBER[int(action // BOARD_SIZE)])
+                # randomに行動の選択
+                action_board = (IN_ALPHABET[random.randint(0,7)],IN_NUMBER[random.randint(0,7)])
 
                 if board.checkIN(action_board):
                     x = IN_ALPHABET.index(action_board[0]) + 1
@@ -183,34 +135,39 @@ def to_osero():
                 if not board.move(x, y):
                     continue
                 else:
+                    # 状態 s′ と報酬rの観測
                     state_next = trans(board.RawBoard)
                     reward = 0
                     memory.push(state,action,state_next,reward)
                 
-                # board.display()
+            # board.display()
 
-                if board.isGameOver():
-                    count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
-                    count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
-                    state_next = trans(board.RawBoard)
-                    dif = count_black - count_white
-                    if dif > 0:#先手（黒）が勝つ
-                        black_win += 1
-                        black_win_interval += 1
-                        reward = 1
-                    elif dif < 0:#後手（白）が勝つ
-                        white_win += 1
-                        reward = -1
-                    elif dif == 0:#引き分け
-                        draw += 1
-                        reward = 0
-                    memory.push(state,action,state_next,reward)
-                    break
-
-                if not board.MovablePos[:, :].any():
-                    board.CurrentColor = - board.CurrentColor
-                    board.initMovable()
-                    continue
+            # 勝敗の判定 
+            if board.isGameOver():
+                count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
+                count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
+                state_next = trans(board.RawBoard)
+                dif = count_black - count_white
+                if dif > 0:
+                    black_win += 1
+                    black_win_interval += 1
+                    reward = 1
+                elif dif < 0:
+                    white_win += 1
+                    reward = -1
+                elif dif == 0:
+                    draw += 1
+                    reward = 0
+                state_next = trans(board.RawBoard)
+                memory.push(state,action,state_next,reward)
+                break
+            
+            # パス判定
+            if not board.MovablePos[:, :].any():
+                board.CurrentColor = - board.CurrentColor
+                board.initMovable()
+                continue
+        
 
         #ボードの初期化
         board.__init__(BOARD_SIZE)
@@ -224,8 +181,8 @@ def to_osero():
             memory_num = episode_interval # 間隔数だけ経験を抜き取る
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
-            Epoch_Q = 200 # 200くらいもよかった
-            Bach_Size_Q = 10
+            Epoch_Q = 1000 # 200くらいもよかった
+            Bach_Size_Q = 5
             for _ in range(0,Epoch_Q):
                 Random_index = random.sample(range(memory_num), k=memory_num)
                 Batc_count = 0
@@ -254,11 +211,6 @@ def to_osero():
                         # 順伝播計算をして、fに係数を辞書る。
                         f = Q_network.ForwardPropagation(buf_data.state,w2,w3)
                         
-                        # 誤差計算時に、その行動以外をゼロにする。これ必要ない！！
-                        # for ii in range(0,BOARD_SIZE * BOARD_SIZE):
-                        #     if ii != buf_data.action:
-                        #         f['z3'][ii] = 0          
-
                         # 誤差逆伝播法により、bに勾配を辞書る
                         b = Q_network.BackPropagation(Y_train,w2,w3,f['z1'],f['z2'],f['z3'],f['u2'])
 
@@ -310,4 +262,3 @@ def to_osero():
 if __name__ == '__main__':
 
     to_osero()
-    
