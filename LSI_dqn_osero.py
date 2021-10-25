@@ -19,7 +19,7 @@ IN_ALPHABET = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 IN_NUMBER = ['1', '2', '3', '4', '5', '6', '7', '8']
  
 # ボードのサイズ
-BOARD_SIZE = 6
+BOARD_SIZE = 4
 
 # 経験保存時の名前
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
@@ -87,13 +87,13 @@ def to_osero():
     draw = 0
 
     # エピソード数
-    NB_EPISODE = 2000
+    NB_EPISODE = 800
 
     # εグリーディー戦略
     epsilon_start = 0.9
     epsilon_end = 0.05
-    # epsilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
-    epsilon_decay = 10 # この値を変えるだけで、全然違う。
+    epsilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
+    # epsilon_decay = 10
     
     for episode in range(0, NB_EPISODE):
         while True: # 1 game play：board.Turnsで打ちてを判定
@@ -131,37 +131,6 @@ def to_osero():
                     reward = 0
                     # 経験の保存：⟨s,a,s′,r⟩
                     memory.push(state,action,state_next,reward)
-                
-                # 盤面の表示
-                # board.display()
-
-                # 終局判定
-                if board.isGameOver():
-                    # 各色の数
-                    count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
-                    count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
-                    # 勝敗判定と報酬の観測
-                    state_next = trans(board.RawBoard)
-                    dif = count_black - count_white
-                    if dif > 0:#先手（黒）が勝つ
-                        black_win += 1
-                        black_win_interval += 1
-                        reward = 1
-                    elif dif < 0:#後手（白）が勝つ
-                        white_win += 1
-                        reward = -1
-                    elif dif == 0:#引き分け
-                        draw += 1
-                        reward = 0
-                    # 経験の保存
-                    memory.push(state,action,state_next,reward)
-                    break
-
-                # パス
-                if not board.MovablePos[:, :].any():
-                    board.CurrentColor = - board.CurrentColor
-                    board.initMovable()
-                    continue
 
             else:
                 state = trans(board.RawBoard)
@@ -187,30 +156,32 @@ def to_osero():
                     reward = 0
                     memory.push(state,action,state_next,reward)
                 
-                # board.display()
+            # board.display()
 
-                if board.isGameOver():
-                    count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
-                    count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
-                    state_next = trans(board.RawBoard)
-                    dif = count_black - count_white
-                    if dif > 0:#先手（黒）が勝つ
-                        black_win += 1
-                        black_win_interval += 1
-                        reward = 1
-                    elif dif < 0:#後手（白）が勝つ
-                        white_win += 1
-                        reward = -1
-                    elif dif == 0:#引き分け
-                        draw += 1
-                        reward = 0
-                    memory.push(state,action,state_next,reward)
-                    break
-
-                if not board.MovablePos[:, :].any():
-                    board.CurrentColor = - board.CurrentColor
-                    board.initMovable()
-                    continue
+            # 勝敗判定
+            if board.isGameOver():
+                count_black = np.count_nonzero(board.RawBoard[:, :] == BLACK)
+                count_white = np.count_nonzero(board.RawBoard[:, :] == WHITE)
+                state_next = trans(board.RawBoard)
+                dif = count_black - count_white
+                if dif > 0:#先手（黒）が勝つ
+                    black_win += 1
+                    black_win_interval += 1
+                    reward = 1
+                elif dif < 0:#後手（白）が勝つ
+                    white_win += 1
+                    reward = -1
+                elif dif == 0:#引き分け
+                    draw += 1
+                    reward = 0
+                memory.push(state,action,state_next,reward)
+                break
+            
+            # パス判定
+            if not board.MovablePos[:, :].any():
+                board.CurrentColor = - board.CurrentColor
+                board.initMovable()
+                continue
 
         #ボードの初期化
         board.__init__(BOARD_SIZE)
@@ -280,7 +251,7 @@ def to_osero():
             black_win_rate.append(black_win_interval / episode_interval)
 
             # 学習が上手くいかない時に、重みを初期化する。
-            if (black_win_interval / episode_interval) < 0.1 and episode >= 100:
+            if black_win_interval / episode_interval < 0.1 and episode >= 100:
                     w2 = np.random.normal(0,1,(n2,n1))
                     w2 = np.insert(w2,0,0,axis=1)
                     w3 = np.random.normal(0,1,(n3,n2))

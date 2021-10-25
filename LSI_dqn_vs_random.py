@@ -85,13 +85,13 @@ def to_osero():
     draw = 0
 
     # エピソード数
-    NB_EPISODE = 2000
+    NB_EPISODE = 3000
 
     # εグリーディー戦略
     epsilon_start = 0.9
     epsilon_end = 0.05
     epsilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
-    # epsilon_decay = 10 # この値を変えるだけで、全然違う。
+    # epsilon_decay = 10
     
     for episode in range(0, NB_EPISODE):
         while True: # 1 game play：board.Turnsで打ちてを判定 4×4だと先行不利なので、先行DQN
@@ -181,7 +181,7 @@ def to_osero():
             memory_num = episode_interval # 間隔数だけ経験を抜き取る
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
-            Epoch_Q = 1000 # 200くらいもよかった
+            Epoch_Q = 600 # 200くらいもよかった
             Bach_Size_Q = 5
             for _ in range(0,Epoch_Q):
                 Random_index = random.sample(range(memory_num), k=memory_num)
