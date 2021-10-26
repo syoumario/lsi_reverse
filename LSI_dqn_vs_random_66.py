@@ -17,7 +17,7 @@ IN_ALPHABET = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 IN_NUMBER = ['1', '2', '3', '4', '5', '6', '7', '8']
  
 # ボードのサイズ
-BOARD_SIZE = 4
+BOARD_SIZE = 6
 
 # 経験保存時の名前
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
@@ -65,7 +65,7 @@ def to_osero():
     Target_network = net()
     Q_network = net()
     board = Board(BOARD_SIZE) 
-    memory = ExperienceMemory(200)
+    memory = ExperienceMemory(300)
 
     # 重みの初期化　学習時のランダム初期値で結果が異なる場合がある。
     n1 = len(IN) # 入力の要素数
@@ -86,18 +86,17 @@ def to_osero():
 
     """
     いい感じのハイパーパラメータ
-    BOARD_SIZE = 4
+    BOARD_SIZE = 6
+    memory = ExperienceMemory(300)
     NB_EPISODE = 800
     epsilon_start = 0.9
     epsilon_end = 0.05
-    epsilon_decay = 10 or 5 or 20 or 18
-    episode_interval = 40
-    memory_num = episode_interval * 2
+    epsilon_decay = 10 or 30
+    episode_interval = 80 
+    memory_num = episode_interval * 3
     Epoch_Q = 200
     Bach_Size_Q = episode_interval
     epsilon = 0.1
-    2回に１回はいい感じ
-    アイデア：ハイパーパラメータ探索のハード実行
     """
 
     # エピソード数
@@ -107,7 +106,7 @@ def to_osero():
     epsilon_start = 0.9
     epsilon_end = 0.05
     # psilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
-    epsilon_decay = 10 # 大きいほど、ランダム行動の割合が多くなる。"エピソード数との兼ね合いで向上が可能かも"
+    epsilon_decay = 30 # 大きいほど、ランダム行動の割合が多くなる。"エピソード数との兼ね合いで向上が可能かも"
     
     for episode in range(0, NB_EPISODE):
         while True: # 1 game play：board.Turnsで打ちてを判定 4×4だと後攻有利なので、先行DQN
@@ -188,13 +187,13 @@ def to_osero():
         #ボードの初期化
         board.__init__(BOARD_SIZE)
         
-        episode_interval = 40 # NB_EPISODE = 800：40、同期頻度：短いと学習が不安定化し、長いと学習が進みにくくなる。ハイパーパラメータの１つ
+        episode_interval = 80 # NB_EPISODE = 800：40、同期頻度：短いと学習が不安定化し、長いと学習が進みにくくなる。ハイパーパラメータの１つ
         # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
         if episode % episode_interval == 0 and episode != 0:
             w2_init = copy.deepcopy(w2) # Target_network用に重みを固定
             w3_init = copy.deepcopy(w3) # Target_network用に重みを固定
             # 経験をランダムサンプリング
-            memory_num = episode_interval * 2 # 間隔数だけ経験を抜き取る
+            memory_num = episode_interval * 3 # 間隔数だけ経験を抜き取る
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
             Epoch_Q = 200 # エポック数
@@ -245,7 +244,7 @@ def to_osero():
             print('loss max：' + str(max(max(abs(d3), key=max))))
 
             # 経験の初期化
-            memory.__init__(200)
+            memory.__init__(300)
             black_win_rate.append(black_win_interval / episode_interval)
 
             # 学習が上手くいかない時に、重みを初期化する。
