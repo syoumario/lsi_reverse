@@ -242,9 +242,9 @@ def to_osero():
                         error.append(max(max(abs(d3), key=max)))
                         #print(w['w2'])
 
-
             print('Interval Learning -- episodes:' + str(episode))
-            print('black_win_rate：' + str(black_win_interval / episode_interval))
+            print('black_win_interval_rate：' + str(black_win_interval / episode_interval))
+            print('loss max：' + str(max(max(abs(d3), key=max))))
 
             # 経験の初期化
             memory.__init__(100)

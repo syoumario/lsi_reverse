@@ -65,7 +65,7 @@ def to_osero():
     Target_network = net()
     Q_network = net()
     board = Board(BOARD_SIZE) 
-    memory = ExperienceMemory(100)
+    memory = ExperienceMemory(200)
 
     # 重みの初期化　学習時のランダム初期値で結果が異なる場合がある。
     n1 = len(IN) # 入力の要素数
@@ -84,17 +84,31 @@ def to_osero():
     white_win = 0
     draw = 0
 
+    """
+    いい感じのハイパーパラメータ
+    BOARD_SIZE = 4
+    NB_EPISODE = 800
+    epsilon_start = 0.9
+    epsilon_end = 0.05
+    epsilon_decay = 10
+    episode_interval = 40
+    memory_num = episode_interval * 2
+    Epoch_Q = 200
+    Bach_Size_Q = episode_interval
+    epsilon = 0.1
+    """
+
     # エピソード数
-    NB_EPISODE = 3000
+    NB_EPISODE = 800
 
     # εグリーディー戦略
     epsilon_start = 0.9
     epsilon_end = 0.05
-    epsilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
-    # epsilon_decay = 10
+    # psilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
+    epsilon_decay = 10 # NB_EPISODE = 800：10、
     
     for episode in range(0, NB_EPISODE):
-        while True: # 1 game play：board.Turnsで打ちてを判定 4×4だと先行不利なので、先行DQN
+        while True: # 1 game play：board.Turnsで打ちてを判定 4×4だと後攻有利なので、先行DQN
             if board.Turns % 2 == 0: # DQN
                 # 状態を観測する
                 state = trans(board.RawBoard)
@@ -138,8 +152,9 @@ def to_osero():
                     # 状態 s′ と報酬rの観測
                     state_next = trans(board.RawBoard)
                     reward = 0
-                    memory.push(state,action,state_next,reward)
-                
+                    if board.Turns > 0:# state,actionがないので、random初手は経験の保存無し
+                        memory.push(state,action,state_next,reward)
+
             # board.display()
 
             # 勝敗の判定 
@@ -168,21 +183,20 @@ def to_osero():
                 board.initMovable()
                 continue
         
-
         #ボードの初期化
         board.__init__(BOARD_SIZE)
         
-        episode_interval = 50 
+        episode_interval = 40 # NB_EPISODE = 800：40、同期頻度：短いと学習が不安定化し、長いと学習が進みにくくなる。ハイパーパラメータの１つ
         # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
         if episode % episode_interval == 0 and episode != 0:
             w2_init = copy.deepcopy(w2) # Target_network用に重みを固定
             w3_init = copy.deepcopy(w3) # Target_network用に重みを固定
             # 経験をランダムサンプリング
-            memory_num = episode_interval # 間隔数だけ経験を抜き取る
+            memory_num = episode_interval * 2 # 間隔数だけ経験を抜き取る
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
-            Epoch_Q = 600 # 200くらいもよかった
-            Bach_Size_Q = 5
+            Epoch_Q = 200 # エポック数
+            Bach_Size_Q = episode_interval
             for _ in range(0,Epoch_Q):
                 Random_index = random.sample(range(memory_num), k=memory_num)
                 Batc_count = 0
@@ -225,14 +239,15 @@ def to_osero():
 
 
             print('Interval Learning -- episodes:' + str(episode))
-            print('black_win_rate：' + str(black_win_interval / episode_interval))
+            print('black_win_interval_rate：' + str(black_win_interval / episode_interval))
+            print('loss max：' + str(max(max(abs(d3), key=max))))
 
             # 経験の初期化
-            memory.__init__(100)
+            memory.__init__(200)
             black_win_rate.append(black_win_interval / episode_interval)
 
             # 学習が上手くいかない時に、重みを初期化する。
-            if (black_win_interval / episode_interval) < 0.1 and episode >= 100:
+            if black_win_interval / episode_interval < 0.03 and episode >= 100:
                     w2 = np.random.normal(0,1,(n2,n1))
                     w2 = np.insert(w2,0,0,axis=1)
                     w3 = np.random.normal(0,1,(n3,n2))
