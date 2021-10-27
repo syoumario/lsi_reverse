@@ -65,7 +65,7 @@ def to_osero():
     Target_network = net()
     Q_network = net()
     board = Board(BOARD_SIZE) 
-    memory = ExperienceMemory(300)
+    memory = ExperienceMemory(400)
 
     # 重みの初期化　学習時のランダム初期値で結果が異なる場合がある。
     n1 = len(IN) # 入力の要素数
@@ -162,9 +162,6 @@ def to_osero():
                     if x == BOARD_SIZE - 1 and y == BOARD_SIZE:
                         Bad_C_hand_flag = 1
 
-
-
-                
             else: # random
 
                 # randomに行動の選択
@@ -222,13 +219,13 @@ def to_osero():
         #ボードの初期化
         board.__init__(BOARD_SIZE)
         
-        episode_interval = 80 # NB_EPISODE = 800：40、同期頻度：短いと学習が不安定化し、長いと学習が進みにくくなる。ハイパーパラメータの１つ
+        episode_interval = 80 #  80くらいがいい。あんまりエピソード数に依存しない、同期頻度：短いと学習が不安定化し、長いと学習が進みにくくなる。ハイパーパラメータの１つ
         # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
         if episode % episode_interval == 0 and episode != 0:
             w2_init = copy.deepcopy(w2) # Target_network用に重みを固定
             w3_init = copy.deepcopy(w3) # Target_network用に重みを固定
             # 経験をランダムサンプリング
-            memory_num = episode_interval * 3 # 間隔数だけ経験を抜き取る
+            memory_num = episode_interval * 4 # 間隔数だけ経験を抜き取る
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
             Epoch_Q = 400 # エポック数
@@ -309,6 +306,10 @@ def to_osero():
     # 経験を学習する毎における、学習時の誤差の最大値を表示
     plt.show()
     #------------------------結果の可視化------------------------
+
+    # 重みの保存
+    np.save("weight/w2_6_1027",w2)
+    np.save("weight/w3_6_1027",w3)
 
 if __name__ == '__main__':
 

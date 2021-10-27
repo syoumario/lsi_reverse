@@ -17,7 +17,7 @@ IN_ALPHABET = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 IN_NUMBER = ['1', '2', '3', '4', '5', '6', '7', '8']
  
 # ボードのサイズ
-BOARD_SIZE = 4
+BOARD_SIZE = 8
 
 # 経験保存時の名前
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
@@ -84,21 +84,6 @@ def to_osero():
     white_win = 0
     draw = 0
 
-    """
-    いい感じのハイパーパラメータ
-    BOARD_SIZE = 6
-    memory = ExperienceMemory(300)
-    NB_EPISODE = 800
-    epsilon_start = 0.9
-    epsilon_end = 0.05
-    epsilon_decay = 10 or 30
-    episode_interval = 80 
-    memory_num = episode_interval * 3
-    Epoch_Q = 200
-    Bach_Size_Q = episode_interval
-    epsilon = 0.1
-    """
-
     # エピソード数
     NB_EPISODE = 1600
 
@@ -106,7 +91,7 @@ def to_osero():
     epsilon_start = 0.9
     epsilon_end = 0.05
     # psilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
-    epsilon_decay = 30 # 大きいほど、ランダム行動の割合が多くなる。"エピソード数との兼ね合いで向上が可能かも"
+    epsilon_decay = 20 # 大きいほど、ランダム行動の割合が多くなる。"エピソード数との兼ね合いで向上が可能かも"
     
     for episode in range(0, NB_EPISODE):
         while True: # 1 game play：board.Turnsで打ちてを判定 4×4だと後攻有利なので、先行DQN
@@ -147,8 +132,36 @@ def to_osero():
                     if x == BOARD_SIZE and y == 1:
                         Corner_flag = 1
                     if x == BOARD_SIZE and y == BOARD_SIZE:
-                        Corner_flag = 1    
-                
+                        Corner_flag = 1
+                    # 有効手が悪手:Xであった時に、マイナス報酬
+                    Bad_X_hand_flag = 0
+                    if x == 2 and y == 2:
+                         Bad_X_hand_flag = 1
+                    if x == 2 and y == BOARD_SIZE - 1:
+                         Bad_X_hand_flag = 1
+                    if x == BOARD_SIZE - 1 and y == 2:
+                         Bad_X_hand_flag = 1
+                    if x == BOARD_SIZE - 1 and y == BOARD_SIZE - 1:
+                         Bad_X_hand_flag = 1
+                    # 有効手が悪手:Cであった時に、マイナス報酬
+                    Bad_C_hand_flag = 0
+                    if x == 1 and y == 2:
+                        Bad_C_hand_flag = 1
+                    if x == 2 and y == 1:
+                        Bad_C_hand_flag = 1
+                    if x == 1 and y == BOARD_SIZE - 1:
+                        Bad_C_hand_flag = 1
+                    if x == 2 and y == BOARD_SIZE:
+                        Bad_C_hand_flag = 1
+                    if x == BOARD_SIZE - 1 and y == 1:
+                        Bad_C_hand_flag = 1
+                    if x == BOARD_SIZE and y == 2:
+                        Bad_C_hand_flag = 1
+                    if x == BOARD_SIZE and y == BOARD_SIZE - 1:
+                        Bad_C_hand_flag = 1
+                    if x == BOARD_SIZE - 1 and y == BOARD_SIZE:
+                        Bad_C_hand_flag = 1
+
             else: # random
 
                 # randomに行動の選択
@@ -164,8 +177,12 @@ def to_osero():
                     # 状態 s′ と報酬rの観測
                     state_next = trans(board.RawBoard)
                     if Corner_flag == 1:# 角判定
-                        reward = 0.3
+                        reward = 0.2
                         # print("DQN good corner")
+                    elif Bad_X_hand_flag == 1:
+                        reward = -0.1
+                    elif Bad_C_hand_flag == 1:
+                        reward = -0.1
                     else:
                         reward = 0
                     if board.Turns > 0:# state,actionがないので、random初手は経験の保存無し
@@ -202,16 +219,16 @@ def to_osero():
         #ボードの初期化
         board.__init__(BOARD_SIZE)
         
-        episode_interval = 40 # NB_EPISODE = 800：40、同期頻度：短いと学習が不安定化し、長いと学習が進みにくくなる。ハイパーパラメータの１つ
+        episode_interval = 80 #  80くらいがいい。あんまりエピソード数に依存しない、同期頻度：短いと学習が不安定化し、長いと学習が進みにくくなる。ハイパーパラメータの１つ
         # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
         if episode % episode_interval == 0 and episode != 0:
             w2_init = copy.deepcopy(w2) # Target_network用に重みを固定
             w3_init = copy.deepcopy(w3) # Target_network用に重みを固定
             # 経験をランダムサンプリング
-            memory_num = episode_interval * 3 # 間隔数だけ経験を抜き取る
+            memory_num = episode_interval * 5 # 間隔数だけ経験を抜き取る
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
-            Epoch_Q = 600 # エポック数
+            Epoch_Q = 400 # エポック数
             Bach_Size_Q = episode_interval
             for _ in range(0,Epoch_Q):
                 Random_index = random.sample(range(memory_num), k=memory_num)
@@ -272,7 +289,6 @@ def to_osero():
 
             black_win_interval = 0
 
-       
 
     #------------------------結果の可視化------------------------
     print('Black WIN：' + str(black_win))
@@ -289,6 +305,10 @@ def to_osero():
     # 経験を学習する毎における、学習時の誤差の最大値を表示
     plt.show()
     #------------------------結果の可視化------------------------
+
+    # 重みの保存
+    np.save("weight/w2_8",w2)
+    np.save("weight/w2_8",w3)
 
 if __name__ == '__main__':
 
