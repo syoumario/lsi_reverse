@@ -17,7 +17,7 @@ IN_ALPHABET = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 IN_NUMBER = ['1', '2', '3', '4', '5', '6', '7', '8']
  
 # ボードのサイズ
-BOARD_SIZE = 4
+BOARD_SIZE = 6
 
 # 経験保存時の名前
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
@@ -65,7 +65,7 @@ def to_osero():
     Target_network = net()
     Q_network = net()
     board = Board(BOARD_SIZE) 
-    memory = ExperienceMemory(200)
+    memory = ExperienceMemory(300)
 
     # 重みの初期化　学習時のランダム初期値で結果が異なる場合がある。
     n1 = len(IN) # 入力の要素数
@@ -84,22 +84,6 @@ def to_osero():
     white_win = 0
     draw = 0
 
-    """
-    いい感じのハイパーパラメータ
-    BOARD_SIZE = 4
-    NB_EPISODE = 800
-    epsilon_start = 0.9
-    epsilon_end = 0.05
-    epsilon_decay = 10 or 5 or 20 or 18
-    episode_interval = 40
-    memory_num = episode_interval * 2
-    Epoch_Q = 200
-    Bach_Size_Q = episode_interval
-    epsilon = 0.1
-    2回に１回はいい感じ
-    アイデア：ハイパーパラメータ探索のハード実行
-    """
-
     # エピソード数
     NB_EPISODE = 800
 
@@ -107,7 +91,7 @@ def to_osero():
     epsilon_start = 0.9
     epsilon_end = 0.05
     # psilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
-    epsilon_decay = 10 # 大きいほど、ランダム行動の割合が多くなる。"エピソード数との兼ね合いで向上が可能かも"
+    epsilon_decay = 20 # 大きいほど、ランダム行動の割合が多くなる。"エピソード数との兼ね合いで向上が可能かも"
     
     for episode in range(0, NB_EPISODE):
         while True: # 1 game play：board.Turnsで打ちてを判定 4×4だと後攻有利なので、先行DQN
@@ -138,6 +122,48 @@ def to_osero():
                 # 手を打つ（相手が打ってから、経験を保存する。）
                 if not board.move(x, y):
                     continue
+                else:
+                    # 有効手が角であった時にflagを立て、相手行動時に+報酬を与える。
+                    Corner_flag = 0
+                    if x == 1 and y == 1:
+                        Corner_flag = 1
+                    if x == 1 and y == BOARD_SIZE:
+                        Corner_flag = 1
+                    if x == BOARD_SIZE and y == 1:
+                        Corner_flag = 1
+                    if x == BOARD_SIZE and y == BOARD_SIZE:
+                        Corner_flag = 1
+                    # 有効手が悪手:Xであった時に、マイナス報酬
+                    Bad_X_hand_flag = 0
+                    if x == 2 and y == 2:
+                         Bad_X_hand_flag = 1
+                    if x == 2 and y == BOARD_SIZE - 1:
+                         Bad_X_hand_flag = 1
+                    if x == BOARD_SIZE - 1 and y == 2:
+                         Bad_X_hand_flag = 1
+                    if x == BOARD_SIZE - 1 and y == BOARD_SIZE - 1:
+                         Bad_X_hand_flag = 1
+                    # 有効手が悪手:Cであった時に、マイナス報酬
+                    Bad_C_hand_flag = 0
+                    if x == 1 and y == 2:
+                        Bad_C_hand_flag = 1
+                    if x == 2 and y == 1:
+                        Bad_C_hand_flag = 1
+                    if x == 1 and y == BOARD_SIZE - 1:
+                        Bad_C_hand_flag = 1
+                    if x == 2 and y == BOARD_SIZE:
+                        Bad_C_hand_flag = 1
+                    if x == BOARD_SIZE - 1 and y == 1:
+                        Bad_C_hand_flag = 1
+                    if x == BOARD_SIZE and y == 2:
+                        Bad_C_hand_flag = 1
+                    if x == BOARD_SIZE and y == BOARD_SIZE - 1:
+                        Bad_C_hand_flag = 1
+                    if x == BOARD_SIZE - 1 and y == BOARD_SIZE:
+                        Bad_C_hand_flag = 1
+
+
+
                 
             else: # random
 
@@ -153,7 +179,15 @@ def to_osero():
                 else:
                     # 状態 s′ と報酬rの観測
                     state_next = trans(board.RawBoard)
-                    reward = 0
+                    if Corner_flag == 1:# 角判定
+                        reward = 0.2
+                        # print("DQN good corner")
+                    elif Bad_X_hand_flag == 1:
+                        reward = -0.1
+                    elif Bad_C_hand_flag == 1:
+                        reward = -0.1
+                    else:
+                        reward = 0
                     if board.Turns > 0:# state,actionがないので、random初手は経験の保存無し
                         memory.push(state,action,state_next,reward)
 
@@ -188,16 +222,16 @@ def to_osero():
         #ボードの初期化
         board.__init__(BOARD_SIZE)
         
-        episode_interval = 40 # NB_EPISODE = 800：40、同期頻度：短いと学習が不安定化し、長いと学習が進みにくくなる。ハイパーパラメータの１つ
+        episode_interval = 80 # NB_EPISODE = 800：40、同期頻度：短いと学習が不安定化し、長いと学習が進みにくくなる。ハイパーパラメータの１つ
         # 5.（定期動作）Experience Bufferから任意の経験を取り出し、Q Networkをミニバッチ学習(Experience Replay)
         if episode % episode_interval == 0 and episode != 0:
             w2_init = copy.deepcopy(w2) # Target_network用に重みを固定
             w3_init = copy.deepcopy(w3) # Target_network用に重みを固定
             # 経験をランダムサンプリング
-            memory_num = episode_interval * 2 # 間隔数だけ経験を抜き取る
+            memory_num = episode_interval * 3 # 間隔数だけ経験を抜き取る
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
-            Epoch_Q = 200 # エポック数
+            Epoch_Q = 400 # エポック数
             Bach_Size_Q = episode_interval
             for _ in range(0,Epoch_Q):
                 Random_index = random.sample(range(memory_num), k=memory_num)
@@ -245,7 +279,7 @@ def to_osero():
             print('loss max：' + str(max(max(abs(d3), key=max))))
 
             # 経験の初期化
-            memory.__init__(200)
+            memory.__init__(400)
             black_win_rate.append(black_win_interval / episode_interval)
 
             # 学習が上手くいかない時に、重みを初期化する。

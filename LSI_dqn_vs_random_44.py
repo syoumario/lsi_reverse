@@ -65,7 +65,7 @@ def to_osero():
     Target_network = net()
     Q_network = net()
     board = Board(BOARD_SIZE) 
-    memory = ExperienceMemory(400)
+    memory = ExperienceMemory(200)
 
     # 重みの初期化　学習時のランダム初期値で結果が異なる場合がある。
     n1 = len(IN) # 入力の要素数
@@ -86,27 +86,28 @@ def to_osero():
 
     """
     いい感じのハイパーパラメータ
-    BOARD_SIZE = 6
-    memory = ExperienceMemory(300)
-    NB_EPISODE = 800
+    BOARD_SIZE = 4
+    memory = ExperienceMemory(200)
+    NB_EPISODE = 1600
     epsilon_start = 0.9
     epsilon_end = 0.05
-    epsilon_decay = 10 or 30
-    episode_interval = 80 
+    epsilon_decay = 20
+    corner_ reward = 0.3
+    episode_interval = 40
     memory_num = episode_interval * 3
-    Epoch_Q = 200
+    Epoch_Q = 400
     Bach_Size_Q = episode_interval
     epsilon = 0.1
     """
 
     # エピソード数
-    NB_EPISODE = 1600
+    NB_EPISODE = 800
 
     # εグリーディー戦略
     epsilon_start = 0.9
     epsilon_end = 0.05
     # psilon_decay = NB_EPISODE / 100 # ネット見た感じ、エピソード数 / 100 くらいがいい値な気がする。
-    epsilon_decay = 30 # 大きいほど、ランダム行動の割合が多くなる。"エピソード数との兼ね合いで向上が可能かも"
+    epsilon_decay = 20 # 大きいほど、ランダム行動の割合が多くなる。"エピソード数との兼ね合いで向上が可能かも"
     
     for episode in range(0, NB_EPISODE):
         while True: # 1 game play：board.Turnsで打ちてを判定 4×4だと後攻有利なので、先行DQN
@@ -211,7 +212,7 @@ def to_osero():
             memory_num = episode_interval * 3 # 間隔数だけ経験を抜き取る
             data = memory.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
-            Epoch_Q = 600 # エポック数
+            Epoch_Q = 400 # エポック数
             Bach_Size_Q = episode_interval
             for _ in range(0,Epoch_Q):
                 Random_index = random.sample(range(memory_num), k=memory_num)
