@@ -307,8 +307,8 @@ def to_osero():
     #------------------------結果の可視化------------------------
 
     # 重みの保存
-    np.save("weight/w2_8",w2)
-    np.save("weight/w2_8",w3)
+    np.save("lsi_reverse/weight/w2_8",w2)
+    np.save("lsi_reverse/weight/w3_8",w3)
 
 if __name__ == '__main__':
 
