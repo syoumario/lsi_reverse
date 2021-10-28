@@ -17,7 +17,7 @@ IN_ALPHABET = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 IN_NUMBER = ['1', '2', '3', '4', '5', '6', '7', '8']
  
 # ボードのサイズ
-BOARD_SIZE = 6
+BOARD_SIZE = 4
 
 # 経験保存時の名前
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
@@ -289,7 +289,67 @@ def to_osero():
 
             black_win_interval = 0
 
-       
+        # vs random 200回検証
+        off = 0 # off = 1でこれを実行
+        if episode % 200 == 0 and episode != 0 and off == 1:
+            board_test = Board(BOARD_SIZE) 
+            black_win_test = 0
+            for tt in range(0,100):
+                flag = 0
+                while True: # 1 game play：board.Turnsでplayerを判定
+                    if board_test.Turns % 2 == 0: # DQN
+                        state_test = trans(board_test.RawBoard)
+                        buf = Target_network.ForwardPropagation(state_test, w2, w3)
+
+                        # 最大Q値の行動選択
+                        action = ACT[np.argmax(buf['z3'])]
+                            
+                        # 一度ワンクッションしてる（後で直したい）
+                        action_board = (IN_ALPHABET[int(action % BOARD_SIZE)],IN_NUMBER[int(action // BOARD_SIZE)])
+
+                        # 最大Q値の行動が無効手であった時、ランダム行動
+                        if flag == 1:
+                            action_board = (IN_ALPHABET[random.randint(0,7)],IN_NUMBER[random.randint(0,7)])
+                            flag = 0
+
+                        # 入力手をチェック（基本的に範囲内にある）
+                        if board_test.checkIN(action_board):
+                            x = IN_ALPHABET.index(action_board[0]) + 1
+                            y = IN_NUMBER.index(action_board[1]) + 1
+
+                        # 手を打つ
+                        if not board_test.move(x, y):
+                            flag = 1
+                            continue
+                    else:
+                        action_board = (IN_ALPHABET[random.randint(0,7)],IN_NUMBER[random.randint(0,7)])
+                        if board_test.checkIN(action_board):
+                            x = IN_ALPHABET.index(action_board[0]) + 1
+                            y = IN_NUMBER.index(action_board[1]) + 1
+                        if not board_test.move(x, y):
+                            continue
+
+                    if board_test.isGameOver():
+                        count_black = np.count_nonzero(board_test.RawBoard[:, :] == BLACK)
+                        count_white = np.count_nonzero(board_test.RawBoard[:, :] == WHITE)
+                        dif = count_black - count_white
+                        if dif > 0:
+                            black_win_test += 1
+                        break
+                    
+                    if not board_test.MovablePos[:, :].any():
+                        board_test.CurrentColor = - board_test.CurrentColor
+                        board_test.initMovable()
+                        continue
+            
+                # ボードの初期化
+                board_test.__init__(BOARD_SIZE)
+
+            # 結果の可視化
+            print()
+            print('100 vs random test black win：' + str(black_win_test / 100))
+            print()
+
 
     #------------------------結果の可視化------------------------
     print('Black WIN：' + str(black_win))

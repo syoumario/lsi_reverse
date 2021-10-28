@@ -94,11 +94,6 @@ def to_osero():
 
     # エピソード数
     NB_EPISODE = 800
-
-    # εグリーディー戦略
-    epsilon_start = 0.9
-    epsilon_end = 0.05
-    epsilon_decay = 20
     
     Corner_flag_a = 0                
     Bad_X_hand_flag_a = 0
@@ -106,6 +101,7 @@ def to_osero():
     Corner_flag_b = 0                
     Bad_X_hand_flag_b = 0
     Bad_C_hand_flag_b = 0
+
     for episode in range(0, NB_EPISODE):
         if episode % 20 == 0:
             print('episode：' + str(episode))
@@ -118,7 +114,7 @@ def to_osero():
                 buf_a = Target_network_a.ForwardPropagation(state_a, w2_a, w3_a)
 
                 # Target Networkから出力されたQ値を元に,ε-greedy選択法で行動選択
-                epsilon = epsilon_end + (epsilon_start - epsilon_end) * np.exp(- episode / epsilon_decay)
+                epsilon = 0.2
                 if np.random.uniform() < epsilon:
                     # ランダム行動
                     action_a = np.random.randint(0, len(ACT))
@@ -198,7 +194,7 @@ def to_osero():
                 buf_b = Target_network_b.ForwardPropagation(state_b, w2_b, w3_b)
 
                 # Target Networkから出力されたQ値を元に,ε-greedy選択法で行動選択
-                epsilon = epsilon_end + (epsilon_start - epsilon_end) * np.exp(- episode / epsilon_decay)
+                epsilon = 0.2
                 if np.random.uniform() < epsilon:
                     # ランダム行動
                     action_b = np.random.randint(0, len(ACT))
@@ -319,7 +315,7 @@ def to_osero():
             data_b = memory_b.sample(memory_num)
             # Q Networkの学習実行：dataからミニバッチ法でやりたい
             Epoch_Q = 400 # エポック数
-            Bach_Size_Q = episode_interval
+            Bach_Size_Q = int(episode_interval / 2)
             for _ in range(0,Epoch_Q):
                 Random_index_a = random.sample(range(memory_num), k=memory_num)
                 Random_index_b = random.sample(range(memory_num), k=memory_num)
