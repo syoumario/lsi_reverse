@@ -66,8 +66,8 @@ def to_osero():
     board = Board(BOARD_SIZE) 
 
     # 重みのロード
-    w2 = np.load("lsi_reverse/weight/w2_6_1027.npy")
-    w3 = np.load("lsi_reverse/weight/w3_6_1027.npy")
+    w2 = np.load("lsi_reverse/weight/w2_test_a.npy")
+    w3 = np.load("lsi_reverse/weight/w3_test_a.npy")
 
     # 記録の可視化
     black_win = 0
